@@ -1,12 +1,18 @@
+#include <Servo.h>
+Servo distanceServo;
 // Connect motor controller pins to Arduino digital pins
 // Motor One
-const int enA = 10;
-const int in1 = 9;
+const int enA = 11;
+const int in1 = 12;
 const int in2 = 8;
 // Motor Two
-const int enB = 5;
 const int in3 = 7;
 const int in4 = 6;
+const int enB = 5;
+// Servo Motor
+const int SERVO_PIN = 9;
+int servoPos = 90;
+int servoRight = 1;
 // Distance Sensor
 const int TRIGGER_PIN = 2;
 const int ECHO_PIN = 4;
@@ -17,12 +23,12 @@ const int LEFT = 3;
 const int RIGHT = 4;
 const int STOPPED = 0;
 // Speed
-const int LEFT_SPEED = 175;
-const int RIGHT_SPEED = 185;
+const int LEFT_SPEED = 110;
+const int RIGHT_SPEED = 120;
 // Turning Delay in milliseconds
-const int TURNING_DELAY = 1000;
+const int TURNING_DELAY = 500;
 // Loop Interval
-const long interval = 1000;
+const long interval = 100;
 
 // Driving Status
 int drivingStatus = STOPPED;
@@ -42,6 +48,50 @@ void setup()
   pinMode(in4, OUTPUT);
   pinMode(TRIGGER_PIN, OUTPUT); // Sets the trigPin as an Output
   pinMode(ECHO_PIN, INPUT); // Sets the echoPin as an Input
+  distanceServo.attach(SERVO_PIN);
+}
+
+void loop()
+{
+  unsigned long currentMillis = millis();
+  if (currentMillis - previousMillis >= interval) {
+    // save the last time you blinked the LED
+    previousMillis = currentMillis;
+    if(servoRight == 1) {
+      if(servoPos > 0) {
+        distanceServo.write(servoPos);
+        servoPos = servoPos - 30;
+      } else {
+        servoRight = 0;
+        servoPos = 0;
+        distanceServo.write(servoPos);
+      }
+    } else if(servoRight == 0) {
+      if(servoPos < 180) {
+        distanceServo.write(servoPos);
+        servoPos = servoPos + 30;
+      } else {
+        servoRight = 1;
+        servoPos = 180;
+        distanceServo.write(servoPos);
+      }
+    }
+    
+    if(getDistance() < 12) {
+      drivingStatus = stopDriving();
+      if(servoPos > 89) {
+        Serial.println("RIGHT");
+        drivingStatus = drive(RIGHT);
+      } else {
+        Serial.println("LEFT");
+        drivingStatus = drive(LEFT);
+      }
+      delay(TURNING_DELAY);
+    } else if(drivingStatus != FORWARDS) {
+      Serial.println("FORWARDS");
+      drivingStatus = drive(FORWARDS);
+    }
+  }
 }
 
 /**
@@ -113,7 +163,6 @@ long getDistance() {
   return inches;
 }
 
-
 long microsecondsToInches(long microseconds) {
   // According to Parallax's datasheet for the PING))), there are
   // 73.746 microseconds per inch (i.e. sound travels at 1130 feet per
@@ -130,18 +179,3 @@ long microsecondsToCentimeters(long microseconds) {
   return microseconds / 29 / 2;
 }
 
-void loop()
-{
-  unsigned long currentMillis = millis();
-  if (currentMillis - previousMillis >= interval) {
-    // save the last time you blinked the LED
-    previousMillis = currentMillis;
-    if(getDistance() < 12) {
-      drivingStatus = stopDriving();
-      drivingStatus = drive(LEFT);
-      delay(TURNING_DELAY);
-    } else if(drivingStatus != FORWARDS) {
-        drivingStatus = drive(FORWARDS);
-    }
-  }
-}
